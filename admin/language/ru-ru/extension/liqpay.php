@@ -12,8 +12,8 @@ $_['text_card']			 = 'Кредитная карта';
 $_['text_liqpay']		 = '<img src="view/image/payment/liqpay.png" alt="LIQPAY" title="LIQPAY" style="border: 1px solid #EEEEEE;" />';
 
 // Entry
-$_['entry_merchant']	 = 'ID Продавца';
-$_['entry_signature']	 = 'Подпись';
+$_['entry_merchant']	 = 'Публичный ключ';
+$_['entry_signature']	 = 'Приватный ключ';
 $_['entry_type']		 = 'Тип';
 $_['entry_total']		 = 'Нижняя граница';
 $_['entry_order_status'] = 'Статус заказа после оплаты';
