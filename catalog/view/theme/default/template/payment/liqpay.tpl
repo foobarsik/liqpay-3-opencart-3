@@ -24,22 +24,23 @@
 ?>
 
 <form action="<?php echo $action ?>" method="post" id="liqpay">
-    <input type="hidden" name="data"  value="<?=$data?>" />
-    <input type="hidden" name="signature" value="<?=$signature?>" />
+    <input type="hidden" name="data" value="<?=$data?>"/>
+    <input type="hidden" name="signature" value="<?=$signature?>"/>
 
-  <div class="buttons">
-    <div class="pull-right">
-        <input type="submit" value="<?php echo $button_confirm; ?>" id="button-confirm" data-loading-text="<?php echo $text_loading; ?>" class="btn btn-primary" />
+    <div class="buttons">
+        <div class="pull-right">
+            <input type="submit" value="<?php echo $button_confirm; ?>" id="button-confirm"
+                   data-loading-text="<?php echo $text_loading; ?>" class="btn btn-primary"/>
+        </div>
     </div>
-  </div>
 </form>
 <script type="text/javascript">
-    $(document).ready(function(){
-        $("#payment").click(function(event){
+    $(document).ready(function () {
+        $("#payment").click(function (event) {
             $.ajax({
                 type: 'get',
                 url: '<?php echo $url_confirm; ?>',
-                success: function() {
+                success: function () {
                     $("form#liqpay").submit();
                 }
             });

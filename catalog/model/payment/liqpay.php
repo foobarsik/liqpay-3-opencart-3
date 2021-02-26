@@ -35,16 +35,16 @@ class ModelPaymentLiqPay extends Model
      *
      * @return void
      */
- 	public function getMethod($address, $total)
-	{
-		$this->language->load('payment/liqpay');
+    public function getMethod($address, $total)
+    {
+        $this->language->load('payment/liqpay');
 
-		$tbl_zone_to_geo_zone = DB_PREFIX.'zone_to_geo_zone';
-		$liqpay_geo_zone_id = (int)$this->config->get('liqpay_geo_zone_id');
-		$country_id = (int)$address['country_id'];
-		$zone_id = (int)$address['zone_id'];
+        $tbl_zone_to_geo_zone = DB_PREFIX . 'zone_to_geo_zone';
+        $liqpay_geo_zone_id = (int)$this->config->get('liqpay_geo_zone_id');
+        $country_id = (int)$address['country_id'];
+        $zone_id = (int)$address['zone_id'];
 
-		$sql = "
+        $sql = "
 				SELECT *
 				FROM {$tbl_zone_to_geo_zone}
 				WHERE geo_zone_id = '{$liqpay_geo_zone_id}'
@@ -52,28 +52,28 @@ class ModelPaymentLiqPay extends Model
 				AND (zone_id = '{$zone_id}' OR zone_id = '0')
 		";
 
-		$query = $this->db->query($sql);
+        $query = $this->db->query($sql);
 
-		if ($this->config->get('liqpay_total') > 0 && $this->config->get('liqpay_total') > $total) {
-			$status = false;
-		} elseif (!$this->config->get('liqpay_geo_zone_id')) {
-			$status = true;
-		} elseif ($query->num_rows) {
-			$status = true;
-		} else {
-			$status = false;
-		}
+        if ($this->config->get('liqpay_total') > 0 && $this->config->get('liqpay_total') > $total) {
+            $status = false;
+        } elseif (!$this->config->get('liqpay_geo_zone_id')) {
+            $status = true;
+        } elseif ($query->num_rows) {
+            $status = true;
+        } else {
+            $status = false;
+        }
 
-		$method_data = array();
+        $method_data = array();
 
-		if ($status) {
-			$method_data = array(
-				'code'       => 'liqpay',
-				'title'      => $this->language->get('text_title'),
-				'sort_order' => $this->config->get('liqpay_sort_order')
-			);
-		}
+        if ($status) {
+            $method_data = array(
+                'code' => 'liqpay',
+                'title' => $this->language->get('text_title'),
+                'sort_order' => $this->config->get('liqpay_sort_order')
+            );
+        }
 
-		return $method_data;
-	}
+        return $method_data;
+    }
 }

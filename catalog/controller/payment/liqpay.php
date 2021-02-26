@@ -45,9 +45,9 @@ class ControllerPaymentLiqpay extends Controller
 
         $order_info = $this->model_checkout_order->getOrder($order_id);
 
-        $description = 'Order #'.$order_id;
+        $description = 'Order #' . $order_id;
 
-        $order_id .= '#'.time();
+        $order_id .= '#' . time();
         $result_url = $this->url->link('payment/liqpay/server', '', 'SSL');
         $server_url = $this->url->link('payment/liqpay/server', '', 'SSL');
 
@@ -55,56 +55,58 @@ class ControllerPaymentLiqpay extends Controller
         $public_key = $this->config->get('liqpay_public_key');
         $type = 'buy';
         $currency = $order_info['currency_code'];
-        if ($currency == 'RUR') { $currency = 'RUB'; }
+        if ($currency == 'RUR') {
+            $currency = 'RUB';
+        }
         $amount = $this->currency->format(
             $order_info['total'],
             $order_info['currency_code'],
             $order_info['currency_value'],
             false
         );
-        $version  = '3';
+        $version = '3';
         $language = $this->language->get('code');
 
         $language = ($language == 'ru' || $language == 'en') ? $language : $this->config->get('liqpay_language');
-        $pay_way  = $this->config->get('liqpay_pay_way');
+        $pay_way = $this->config->get('liqpay_pay_way');
         //$language = $this->config->get('liqpay_language');
 
-        $send_data = array('version'    => $version, 
-                            //'sandbox'    => '1',   
-                          'action'      => 'pay', 
-                          'public_key'  => $public_key,
-                          'amount'      => $amount,
-                          'currency'    => $currency,
-                          'description' => $description,
-                          'order_id'    => $order_id,
-                          'type'        => $type,
-                          'language'    => $language,
-                          'server_url'  => $server_url,
-                          'result_url'  => $result_url);
-        if(isset($pay_way)){
-          $send_data['paytypes'] = $pay_way;
+        $send_data = array('version' => $version,
+            //'sandbox'    => '1',
+            'action' => 'pay',
+            'public_key' => $public_key,
+            'amount' => $amount,
+            'currency' => $currency,
+            'description' => $description,
+            'order_id' => $order_id,
+            'type' => $type,
+            'language' => $language,
+            'server_url' => $server_url,
+            'result_url' => $result_url);
+        if (isset($pay_way)) {
+            $send_data['paytypes'] = $pay_way;
         }
 
         $data_final = base64_encode(json_encode($send_data));
 
-        $signature = base64_encode(sha1($private_key.$data_final.$private_key, 1));
+        $signature = base64_encode(sha1($private_key . $data_final . $private_key, 1));
 
-        $data['action']         = $this->config->get('liqpay_action');
-        $data['signature']      = $signature;
-        $data['data']           = $data_final;
+        $data['action'] = $this->config->get('liqpay_action');
+        $data['signature'] = $signature;
+        $data['data'] = $data_final;
         $data['button_confirm'] = 'Оплатить';
-        $data['url_confirm']    = $this->url->link('payment/liqpay/confirm');
-        
-        if (VERSION >= '2.2.0.0') { 
-          return $this->load->view('payment/liqpay', $data);    
-          
+        $data['url_confirm'] = $this->url->link('payment/liqpay/confirm');
+
+        if (VERSION >= '2.2.0.0') {
+            return $this->load->view('payment/liqpay', $data);
+
         } else {
-          if (file_exists(DIR_TEMPLATE . $this->config->get('config_template') . '/template/payment/liqpay.tpl')) {
-            return $this->load->view($this->config->get('config_template') . '/template/payment/liqpay.tpl', $data);
-          } else {
-            return $this->load->view('default/template/payment/liqpay.tpl', $data);
-          }        
-        }       
+            if (file_exists(DIR_TEMPLATE . $this->config->get('config_template') . '/template/payment/liqpay.tpl')) {
+                return $this->load->view($this->config->get('config_template') . '/template/payment/liqpay.tpl', $data);
+            } else {
+                return $this->load->view('default/template/payment/liqpay.tpl', $data);
+            }
+        }
     }
 
 
@@ -115,12 +117,77 @@ class ControllerPaymentLiqpay extends Controller
      */
     public function confirm()
     {
-        $this->load->model('checkout/order'); 
+        $this->load->model('checkout/order');
         $order = $this->session->data['order_id'];
         //$this->model_checkout_order->confirm($order, $this->config->get('config_order_status_id'), 'unpaid');
         $this->model_checkout_order->confirm($this->session->data['order_id'], 2);
     }
-    
+
+    /**
+     * Server action
+     *
+     * @return void
+     */
+    public function server()
+    {
+        if (!$posts = $this->getPosts()) {
+            die('Posts error');
+        }
+
+        list(
+            $data,
+            $signature
+            ) = $posts;
+
+        if (!$data || !$signature) {
+            die("No data or signature");
+        }
+
+        $parsed_data = json_decode(base64_decode($data), true);
+
+        $received_public_key = (isset($parsed_data['public_key'])) ? $parsed_data['public_key'] : '';
+        $order_id = (isset($parsed_data['order_id'])) ? $parsed_data['order_id'] : '';
+        $status = (isset($parsed_data['status'])) ? $parsed_data['status'] : '';
+        $sender_phone = (isset($parsed_data['sender_phone'])) ? $parsed_data['sender_phone'] : '';
+        $amount = (isset($parsed_data['amount'])) ? $parsed_data['amount'] : '';
+        $currency = (isset($parsed_data['currency'])) ? $parsed_data['currency'] : '';
+        $transaction_id = (isset($parsed_data['transaction_id'])) ? $parsed_data['transaction_id'] : '';
+
+        $real_order_id = $this->getRealOrderID($order_id);
+
+        if ($real_order_id <= 0) {
+            die("Order_id real_order_id < 0");
+        }
+
+        $this->load->model('checkout/order');
+        if (!$this->model_checkout_order->getOrder($real_order_id)) {
+            die("Order_id fail");
+        }
+
+        $private_key = $this->config->get('liqpay_private_key');
+        $public_key = $this->config->get('liqpay_public_key');
+
+        $generated_signature = base64_encode(sha1($private_key . $data . $private_key, 1));
+
+        if ($signature != $generated_signature) {
+            die("Signature secure fail");
+        }
+        if ($public_key != $received_public_key) {
+            die("public_key secure fail");
+        }
+
+        if ($status == 'success') {
+            $this->model_checkout_order->addOrderHistory($real_order_id, $this->config->get('liqpay_order_status_id'));
+            $this->response->redirect($this->url->link('checkout/success', '', 'SSL'));
+        } elseif (preg_match('/wait|hold|processing/', $status)) {
+            $this->model_checkout_order->addOrderHistory($real_order_id, 1);
+            $this->response->redirect($this->url->link('checkout/wait', '', 'SSL'));
+        } else {
+            //$this->session->data['error'] = $this->session->data['status'];
+            $this->response->redirect($this->url->link('checkout/failure', '', 'SSL'));
+        }
+
+    }
 
     /**
      * Check and return posts data
@@ -142,7 +209,6 @@ class ControllerPaymentLiqpay extends Controller
         return array();
     }
 
-
     /**
      * get real order ID
      *
@@ -154,59 +220,4 @@ class ControllerPaymentLiqpay extends Controller
         return $real_order_id[0];
     }
 
-
-    /**
-     * Server action
-     *
-     * @return void
-     */
-    public function server()
-    {
-        if (!$posts = $this->getPosts()) { die('Posts error'); }
-
-        list(
-            $data,
-            $signature
-        ) = $posts;
-        
-        if(!$data || !$signature) {die("No data or signature");}
-
-        $parsed_data = json_decode(base64_decode($data), true);
-
-        $received_public_key = (isset($parsed_data['public_key']))?$parsed_data['public_key']:'';
-        $order_id            = (isset($parsed_data['order_id']))?$parsed_data['order_id']:'';
-        $status              = (isset($parsed_data['status']))?$parsed_data['status']:'';
-        $sender_phone        = (isset($parsed_data['sender_phone']))?$parsed_data['sender_phone']:'';
-        $amount              = (isset($parsed_data['amount']))?$parsed_data['amount']:'';
-        $currency            = (isset($parsed_data['currency']))?$parsed_data['currency']:'';
-        $transaction_id      = (isset($parsed_data['transaction_id']))?$parsed_data['transaction_id']:'';
-
-        $real_order_id = $this->getRealOrderID($order_id);
-
-        if ($real_order_id <= 0) { die("Order_id real_order_id < 0"); }
-
-        $this->load->model('checkout/order');
-        if (!$this->model_checkout_order->getOrder($real_order_id)) { die("Order_id fail");}
-
-        $private_key = $this->config->get('liqpay_private_key');
-        $public_key  = $this->config->get('liqpay_public_key');
-
-        $generated_signature = base64_encode(sha1($private_key.$data.$private_key, 1));
-
-        if ($signature  != $generated_signature) { die("Signature secure fail"); }
-        if ($public_key != $received_public_key) { die("public_key secure fail"); }
-        
-        if ($status == 'success') {
-            $this->model_checkout_order->addOrderHistory($real_order_id, $this->config->get('liqpay_order_status_id'));
-            $this->response->redirect($this->url->link('checkout/success', '', 'SSL'));
-        } elseif (preg_match('/wait|hold|processing/',$status)) {
-            $this->model_checkout_order->addOrderHistory($real_order_id, 1);
-            $this->response->redirect($this->url->link('checkout/wait', '', 'SSL'));        
-        } else {
-            //$this->session->data['error'] = $this->session->data['status'];
-            $this->response->redirect($this->url->link('checkout/failure', '', 'SSL'));
-        }      
-
-    } 
-       
 }
